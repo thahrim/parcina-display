@@ -30,3 +30,16 @@ A personalized fullscreen slideshow and dashboard app created for Parcina, desig
 ```bash
 npm install
 npm start
+
+Or build for deployment:
+npm run build
+
+🛡️ Local Configuration
+Store photos in C:/Photos/
+
+Add reminders in reminders.txt (one per line)
+
+Settings saved in settings.json
+
+🧠 Made with ❤️ for Parcina (mom)
+By Thahrim (@thahrim) — built for accessibility, ease, and love.
