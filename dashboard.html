@@ -1,0 +1,110 @@
+<html>
+<head>
+  <title>Parcina Display Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; background: #f4f4f4; padding: 20px; max-width: 700px; margin: auto; }
+    h2 { margin-top: 30px; }
+    input, button, label, select, textarea {
+      display: block; width: 100%; margin: 10px 0; padding: 10px; font-size: 16px;
+    }
+    .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .reminder-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .reminder-row input { flex: 1; }
+    .remove-btn { width: 40px; background: red; color: white; font-weight: bold; border: none; }
+  </style>
+</head>
+<body>
+  <h1>📸 Parcina Display Dashboard</h1>
+
+  <div class="section">
+    <h2>Settings</h2>
+    <form id="settingsForm">
+      <label><input type="checkbox" name="showQR" id="showQR" /> Show QR on Slideshow</label>
+      <label>QR Position:
+        <select name="qrPosition" id="qrPosition">
+          <option value="top-left">Top Left</option>
+          <option value="top-right">Top Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-right">Bottom Right</option>
+        </select>
+      </label>
+      <button type="submit">Save Settings</button>
+      <p id="saveStatus" style="color: green;"></p>
+    </form>
+  </div>
+
+  <div class="section">
+    <h2>Reminders</h2>
+    <form id="remindersForm">
+      <div id="reminderList"></div>
+      <button type="button" onclick="addReminder()">+ Add Reminder</button>
+      <button type="submit">Save Reminders</button>
+      <p id="reminderStatus" style="color: green;"></p>
+    </form>
+  </div>
+
+  <script>
+    function addReminder(text = "") {
+      const div = document.createElement('div');
+      div.className = 'reminder-row';
+      div.innerHTML = \`
+        <input type="text" placeholder="Reminder text..." value="\${text}">
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+      \`;
+      document.getElementById('reminderList').appendChild(div);
+    }
+
+    fetch('/settings')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('showQR').checked = !!data.showQR;
+        document.getElementById('qrPosition').value = data.qrPosition || 'bottom-right';
+      });
+
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const showQR = document.getElementById('showQR').checked;
+      const qrPosition = document.getElementById('qrPosition').value;
+
+      fetch('/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showQR, qrPosition })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('saveStatus').innerText = "✅ Settings saved!";
+        }
+      });
+    });
+
+    fetch('/reminders')
+      .then(res => res.json())
+      .then(data => {
+        if (data.reminders && Array.isArray(data.reminders)) {
+          data.reminders.forEach(text => addReminder(text));
+        }
+      });
+
+    document.getElementById('remindersForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const rows = [...document.querySelectorAll('#reminderList input')];
+      const reminders = rows.map(input => input.value.trim()).filter(val => val !== '');
+
+      fetch('/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reminders })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('reminderStatus').innerText = "✅ Reminders saved!";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

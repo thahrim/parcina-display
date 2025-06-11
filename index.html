@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <title>Parcina's Display</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: black;
+      color: white;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    #slideshow img {
+      max-height: 100vh;
+      max-width: 100vw;
+      object-fit: contain;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #reminder {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 2em;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 20px;
+    }
+    #qr {
+      position: fixed;
+      opacity: 0.35;
+      z-index: 5;
+    }
+    #qr img {
+      height: 100px;
+      width: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div id="slideshow"></div>
+  <div id="reminder">লোড হচ্ছে... / Loading...</div>
+  <div id="qr"><img src="qr.png" alt="QR Code to upload" /></div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+
+    const imageFolder = 'C:/Photos';
+    const reminderFile = path.join(imageFolder, 'reminders.txt');
+    const settingsFile = path.join(__dirname, 'settings.json');
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif'];
+
+    let imageFilenames = [];
+    let reminders = [];
+    let currentImage = 0;
+    let currentReminder = 0;
+    let hasShuffled = false;
+
+    const slideshow = document.getElementById('slideshow');
+    const reminder = document.getElementById('reminder');
+    const qrDiv = document.getElementById('qr');
+
+    function loadSettings() {
+      try {
+        const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+        if (!settings.showQR) {
+          qrDiv.style.display = 'none';
+        } else {
+          qrDiv.style.display = 'block';
+          const position = settings.qrPosition || 'bottom-right';
+          const positions = {
+            'top-left': { top: '10px', left: '10px' },
+            'top-right': { top: '10px', right: '10px' },
+            'bottom-left': { bottom: '10px', left: '10px' },
+            'bottom-right': { bottom: '10px', right: '10px' }
+          };
+          Object.assign(qrDiv.style, positions[position]);
+        }
+      } catch (err) {
+        console.error('Error loading settings:', err);
+      }
+    }
+
+    function loadImages() {
+      try {
+        const newList = fs.readdirSync(imageFolder).filter(file => {
+          return validExtensions.includes(path.extname(file).toLowerCase());
+        });
+
+        if (!hasShuffled) {
+          for (let i = newList.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newList[i], newList[j]] = [newList[j], newList[i]];
+          }
+          hasShuffled = true;
+        }
+
+        imageFilenames = newList;
+      } catch (e) {
+        console.error('Image folder error:', e);
+      }
+    }
+
+    function loadReminders() {
+      try {
+        const lines = fs.readFileSync(reminderFile, 'utf-8').split('\n');
+        reminders = lines.map(line => {
+          const parts = line.split('|');
+          return { bn: parts[0] || '', en: parts[1] || '' };
+        });
+      } catch (e) {
+        reminders = [{ bn: 'রিমাইন্ডার পাওয়া যায়নি', en: 'No reminders found' }];
+      }
+    }
+
+    function updateImage() {
+      if (!imageFilenames.length) return;
+      slideshow.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = `file:///${imageFolder}/${imageFilenames[currentImage]}`;
+      slideshow.appendChild(img);
+    }
+
+    function updateReminder() {
+      if (!reminders.length) return;
+      const r = reminders[currentReminder];
+      reminder.innerText = `${r.bn} / ${r.en}`;
+    }
+
+    function nextImage() {
+      currentImage = (currentImage + 1) % imageFilenames.length;
+      updateImage();
+    }
+
+    function previousImage() {
+      currentImage = (currentImage - 1 + imageFilenames.length) % imageFilenames.length;
+      updateImage();
+    }
+
+    function nextReminder() {
+      currentReminder = (currentReminder + 1) % reminders.length;
+      updateReminder();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        ipcRenderer.send('quit-app');
+      } else if (e.key === 'ArrowRight') {
+        nextImage();
+      } else if (e.key === 'ArrowLeft') {
+        previousImage();
+      }
+    });
+
+    loadSettings();
+    loadImages();
+    loadReminders();
+    updateImage();
+    updateReminder();
+
+    setInterval(nextImage, 10000);
+    setInterval(nextReminder, 15000);
+
+    fs.watch(imageFolder, (eventType, filename) => {
+      if (validExtensions.includes(path.extname(filename || '').toLowerCase())) {
+        loadImages();
+        updateImage();
+      }
+    });
+
+    fs.watch(reminderFile, () => {
+      loadReminders();
+      updateReminder();
+    });
+
+    fs.watch(settingsFile, () => {
+      loadSettings();
+    });
+  </script>
+</body>
+</html>
