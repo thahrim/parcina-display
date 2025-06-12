@@ -1,28 +1,49 @@
 const qrcode = require('qrcode');
-const ip = require('ip');
 const fs = require('fs');
+const ip = require('ip');
 const path = require('path');
 
-function maybeGenerateQR() {
-  const currentIp = ip.address();
-  const dashboardURL = `http://${currentIp}:8080/dashboard`;
+const qrPath = path.join(__dirname, 'qr.png');
+const ipCachePath = path.join(__dirname, 'qr_ip.txt');
+const currentIp = ip.address();
+const uploadURL = `http://${currentIp}:8080/upload`;
 
-  console.log("📲 Dashboard QR URL:", dashboardURL);
-
-  fs.writeFileSync(path.join(__dirname, 'qr_ip.txt'), `Dashboard: ${dashboardURL}`, 'utf-8');
-
-  // Generate terminal QR as fallback
-  require('qrcode-terminal').generate(dashboardURL, { small: true });
-
-  // Generate PNG file
-  const outputPath = path.join(__dirname, 'qr.png');
-  qrcode.toFile(outputPath, dashboardURL, {
-    width: 300,
-    errorCorrectionLevel: 'H'
+function generateQRCode() {
+  qrcode.toFile(qrPath, uploadURL, {
+    color: {
+      dark: '#000000',
+      light: '#FFFFFF'
+    },
+    width: 200
   }, function (err) {
-    if (err) console.error('❌ QR PNG error:', err);
-    else console.log('✅ qr.png updated at', outputPath);
+    if (err) console.error('❌ QR generation failed:', err);
+    else {
+      fs.writeFileSync(ipCachePath, currentIp);
+      console.log('✅ QR Code updated at', qrPath);
+    }
   });
+}
+
+function maybeGenerateQR() {
+  let regenerate = false;
+  if (!fs.existsSync(qrPath)) {
+    regenerate = true;
+  } else {
+    try {
+      const lastIp = fs.readFileSync(ipCachePath, 'utf8').trim();
+      if (lastIp !== currentIp) {
+        regenerate = true;
+      }
+    } catch {
+      regenerate = true;
+    }
+  }
+
+  if (regenerate) {
+    generateQRCode();
+  } else {
+    console.log('ℹ️ Existing QR is current. No regeneration needed.');
+  }
 }
 
 module.exports = { maybeGenerateQR };

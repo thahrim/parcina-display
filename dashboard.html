@@ -1,32 +1,28 @@
-<!DOCTYPE html>
 <html>
 <head>
-  <title>Parcina Dashboard</title>
+  <title>Parcina Display Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; max-width: 800px; margin: auto; }
-    h1, h2 { margin-top: 30px; }
-    input, button, select, textarea { margin: 10px 0; padding: 10px; font-size: 16px; width: 100%; }
-    .section { background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    #gallery img { height: 100px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
-    .photo-item { display: inline-block; position: relative; }
-    .delete-btn {
-      position: absolute; top: 0; right: 0;
-      background: red; color: white; border: none; font-weight: bold;
-      border-radius: 0 0 0 4px; cursor: pointer;
+    body { font-family: sans-serif; background: #f4f4f4; padding: 20px; max-width: 700px; margin: auto; }
+    h2 { margin-top: 30px; }
+    input, button, label, select, textarea {
+      display: block; width: 100%; margin: 10px 0; padding: 10px; font-size: 16px;
     }
+    .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .reminder-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .reminder-row input { flex: 1; }
+    .remove-btn { width: 40px; background: red; color: white; font-weight: bold; border: none; }
   </style>
 </head>
 <body>
-  <h1>📺 Parcina Display Dashboard</h1>
+  <h1>📸 Parcina Display Dashboard</h1>
 
-  <!-- QR SETTINGS -->
   <div class="section">
-    <h2>📲 QR Settings</h2>
+    <h2>Settings</h2>
     <form id="settingsForm">
-      <label><input type="checkbox" id="showQR"> Show QR on Slideshow</label>
+      <label><input type="checkbox" name="showQR" id="showQR" /> Show QR on Slideshow</label>
       <label>QR Position:
-        <select id="qrPosition">
+        <select name="qrPosition" id="qrPosition">
           <option value="top-left">Top Left</option>
           <option value="top-right">Top Right</option>
           <option value="bottom-left">Bottom Left</option>
@@ -34,109 +30,81 @@
         </select>
       </label>
       <button type="submit">Save Settings</button>
-      <p id="saveStatus"></p>
+      <p id="saveStatus" style="color: green;"></p>
     </form>
   </div>
 
-  <!-- REMINDERS -->
   <div class="section">
-    <h2>🧠 Reminders</h2>
+    <h2>Reminders</h2>
     <form id="remindersForm">
       <div id="reminderList"></div>
       <button type="button" onclick="addReminder()">+ Add Reminder</button>
       <button type="submit">Save Reminders</button>
-      <p id="reminderStatus"></p>
+      <p id="reminderStatus" style="color: green;"></p>
     </form>
   </div>
 
-  <!-- UPLOAD -->
-  <div class="section">
-    <h2>🖼️ Upload & View Photos</h2>
-    <input type="file" id="photoInput" accept="image/*" multiple />
-    <button onclick="uploadPhotos()">Upload</button>
-    <div id="gallery"></div>
-  </div>
-
   <script>
-    // SETTINGS
-    fetch('/settings').then(res => res.json()).then(data => {
-      document.getElementById('showQR').checked = !!data.showQR;
-      document.getElementById('qrPosition').value = data.qrPosition || 'bottom-right';
-    });
-
-    document.getElementById('settingsForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const showQR = document.getElementById('showQR').checked ? 'on' : '';
-      const qrPosition = document.getElementById('qrPosition').value;
-      fetch('/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({ showQR, qrPosition })
-      }).then(res => res.json()).then(data => {
-        document.getElementById('saveStatus').innerText = data.success ? "✅ Saved" : "❌ Failed";
-      });
-    });
-
-    // REMINDERS
     function addReminder(text = "") {
       const div = document.createElement('div');
-      div.innerHTML = '<input type="text" value="' + text + '" /><button onclick="this.parentElement.remove()">×</button>';
+      div.className = 'reminder-row';
+      div.innerHTML = \`
+        <input type="text" placeholder="Reminder text..." value="\${text}">
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+      \`;
       document.getElementById('reminderList').appendChild(div);
     }
 
-    fetch('/reminders').then(res => res.json()).then(data => {
-      (data.reminders || []).forEach(addReminder);
+    fetch('/settings')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('showQR').checked = !!data.showQR;
+        document.getElementById('qrPosition').value = data.qrPosition || 'bottom-right';
+      });
+
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const showQR = document.getElementById('showQR').checked;
+      const qrPosition = document.getElementById('qrPosition').value;
+
+      fetch('/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showQR, qrPosition })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('saveStatus').innerText = "✅ Settings saved!";
+        }
+      });
     });
+
+    fetch('/reminders')
+      .then(res => res.json())
+      .then(data => {
+        if (data.reminders && Array.isArray(data.reminders)) {
+          data.reminders.forEach(text => addReminder(text));
+        }
+      });
 
     document.getElementById('remindersForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const reminders = [...document.querySelectorAll('#reminderList input')].map(input => input.value.trim()).filter(Boolean);
+      const rows = [...document.querySelectorAll('#reminderList input')];
+      const reminders = rows.map(input => input.value.trim()).filter(val => val !== '');
+
       fetch('/reminders', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reminders })
-      }).then(res => res.json()).then(data => {
-        document.getElementById('reminderStatus').innerText = data.success ? "✅ Saved" : "❌ Failed";
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('reminderStatus').innerText = "✅ Reminders saved!";
+        }
       });
     });
-
-    // UPLOAD
-    function uploadPhotos() {
-      const input = document.getElementById('photoInput');
-      const formData = new FormData();
-      for (const file of input.files) formData.append('photos', file);
-      fetch('/upload', {
-        method: 'POST',
-        body: formData
-      }).then(() => {
-        loadGallery();
-        input.value = ''; // reset
-      });
-    }
-
-    function loadGallery() {
-      fetch('/photos').then(res => res.json()).then(files => {
-        const gallery = document.getElementById('gallery');
-        gallery.innerHTML = '';
-        files.forEach(file => {
-          const div = document.createElement('div');
-          div.className = 'photo-item';
-          div.innerHTML = '<img src="/photos/' + encodeURIComponent(file) + '"/>' +
-                          '<button class="delete-btn" onclick="deletePhoto(\'' + file + '\')">×</button>';
-          gallery.appendChild(div);
-        });
-      });
-    }
-
-    function deletePhoto(fileName) {
-      fetch('/delete-photo', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ fileName })
-      }).then(() => loadGallery());
-    }
-
-    loadGallery();
   </script>
 </body>
 </html>
