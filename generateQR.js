@@ -6,7 +6,7 @@ const path = require('path');
 const qrPath = path.join(__dirname, 'qr.png');
 const ipCachePath = path.join(__dirname, 'qr_ip.txt');
 const currentIp = ip.address();
-const uploadURL = `http://${currentIp}:8080/upload`;
+const uploadURL = `http://${currentIp}:8080/dashboard`;
 
 function generateQRCode() {
   qrcode.toFile(qrPath, uploadURL, {

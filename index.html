@@ -65,26 +65,39 @@
     const reminder = document.getElementById('reminder');
     const qrDiv = document.getElementById('qr');
 
-    function loadSettings() {
-      try {
-        const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
-        if (!settings.showQR) {
-          qrDiv.style.display = 'none';
-        } else {
-          qrDiv.style.display = 'block';
-          const position = settings.qrPosition || 'bottom-right';
-          const positions = {
-            'top-left': { top: '10px', left: '10px' },
-            'top-right': { top: '10px', right: '10px' },
-            'bottom-left': { bottom: '10px', left: '10px' },
-            'bottom-right': { bottom: '10px', right: '10px' }
-          };
-          Object.assign(qrDiv.style, positions[position]);
-        }
-      } catch (err) {
-        console.error('Error loading settings:', err);
-      }
+  function loadSettings() {
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+    console.log("✅ Loaded settings:", settings); // <-- this shows current live value
+
+    if (!settings.showQR) {
+      qrDiv.style.display = 'none';
+    } else {
+      qrDiv.style.display = 'block';
+
+      // Clear all position styles first
+      qrDiv.style.top = '';
+      qrDiv.style.bottom = '';
+      qrDiv.style.left = '';
+      qrDiv.style.right = '';
+
+      // Apply new position
+      const position = settings.qrPosition || 'bottom-right';
+      const positions = {
+        'top-left': { top: '10px', left: '10px' },
+        'top-right': { top: '10px', right: '10px' },
+        'bottom-left': { bottom: '10px', left: '10px' },
+        'bottom-right': { bottom: '10px', right: '10px' }
+      };
+      Object.assign(qrDiv.style, positions[position]);
+
+      console.log(`📍 QR repositioned to: ${position}`);
     }
+  } catch (err) {
+    console.error('Error loading settings:', err);
+  }
+}
+
 
     function loadImages() {
       try {
